@@ -1,4 +1,4 @@
-# $Id: AuthzLDAP.pm,v 1.11 2001/01/08 17:23:47 cgilmore Exp $
+# $Id: AuthzLDAP.pm,v 1.15 2001/05/27 20:47:41 cgilmore Exp $
 #
 # Author          : Jason Bodnar, Christian Gilmore
 # Created On      : Apr 04 12:04:00 CDT 2000
@@ -271,7 +271,7 @@ use String::ParseWords;
 
 
 # Global variables
-$Apache::AuthzLDAP::VERSION = '0.51';
+$Apache::AuthzLDAP::VERSION = '0.60';
 
 
 ###############################################################################
@@ -311,7 +311,7 @@ sub check_group {
     my $dn = $entry->dn;
     next unless ($dn =~ /ou=group/);
     $r->log->debug("check_group: Checking group $dn for $userinfo");
-    my $msg = $ld->compare($dn, attr => $memberattrtype, value => $userinfo);
+    $msg = $ld->compare($dn, attr => $memberattrtype, value => $userinfo);
     return (OK, $group) if $msg->code == LDAP_COMPARE_TRUE;
   
     # Return undef if nested groups is not set
@@ -380,16 +380,29 @@ sub handler {
   $r->subprocess_env(REMOTE_GROUP => undef);
   
   my $basedn = $r->dir_config('AuthzBaseDN');
-  my $groupattrtype = $r->dir_config('GroupAttrType') || 'cn';
-  my $ldapserver = $r->dir_config('LDAPServer') || "localhost";
-  my $ldapport = $r->dir_config('LDAPPort') || 389;
-  my $memberattrtype = $r->dir_config('MemberAttrType') || 'member';
-  my $memberattrvalue = $r->dir_config('MemberAttrValue') || 'cn';
-  my $nested_groups = $r->dir_config('NestedGroups');
-  my $uidattrtype = $r->dir_config('UidAttrType') || 'uid';
+  my $groupattrtype = $r->dir_config('AuthzGroupAttrType') || 
+    $r->dir_config('GroupAttrType') || 'cn';
+  my $authzldapserver = $r->dir_config('AuthzLDAPServer') || 
+    $r->dir_config('LDAPServer') || "localhost";
+  my $authzldapport = $r->dir_config('AuthzLDAPPort') || 
+    $r->dir_config('LDAPPort') || 389;
+  my $authenldapserver = $r->dir_config('AuthenLDAPServer') || 
+    $r->dir_config('AuthzLDAPServer') || $r->dir_config('LDAPServer') || 
+      "localhost";
+  my $authenldapport = $r->dir_config('AuthenLDAPPort') || 
+    $r->dir_config('AuthzLDAPPort') || $r->dir_config('LDAPPort') || 389;
+  my $memberattrtype = $r->dir_config('AuthzMemberAttrType') || 
+    $r->dir_config('MemberAttrType') || 'member';
+  my $memberattrvalue = $r->dir_config('AuthzMemberAttrValue') || 
+    $r->dir_config('MemberAttrValue') || 'cn';
+  my $nested_groups = $r->dir_config('AuthzNestedGroups') || 
+    $r->dir_config('NestedGroups');
+  my $uidattrtype = $r->dir_config('AuthzUidAttrType') || 
+    $r->dir_config('UidAttrType') || 'uid';
   my $userbasedn = $r->dir_config('AuthenBaseDN');
   $r->log->debug(join ", ", "AuthzBaseDN=$basedn", 
-		 "GroupAttrType=$groupattrtype", "LDAPServer=$ldapserver", 
+		 "GroupAttrType=$groupattrtype", 
+		 "LDAPServer=$authzldapserver", 
 		 "MemberAttrType=$memberattrtype",
 		 "MemberAttrValue=$memberattrvalue", 
 		 "NestedGroups=$nested_groups", "UserBaseDN=$userbasedn");
@@ -404,9 +417,9 @@ sub handler {
     elsif ($require eq 'group') {
       my $Ld = undef;
       # Connect to the server
-      unless ($Ld = new Net::LDAP($ldapserver,port => $ldapport)) {
+      unless ($Ld = new Net::LDAP($authenldapserver,port => $authenldapport)) {
 	$r->note_basic_auth_failure;
-	$r->log_reason("user $username: LDAP Connection Failed",$r->uri);
+	$r->log_reason("user $username: Authen LDAP Connection Failed",$r->uri);
 	return SERVER_ERROR;
       }
       
@@ -414,7 +427,7 @@ sub handler {
       my $msg = $Ld->bind;
       unless ($msg->code == LDAP_SUCCESS) {
 	$r->note_basic_auth_failure;
-	$r->log_reason("user $username: LDAP Initial Bind Failed: " . 
+	$r->log_reason("user $username: Authen LDAP Initial Bind Failed: " . 
 		       $msg->code . " " . $msg->error, $r->uri);
 	return SERVER_ERROR;
       }
@@ -443,7 +456,25 @@ sub handler {
 	$userinfo = ($msg->first_entry->get($memberattrvalue))[0];	
       }
       $r->log->debug("handler: Userinfo is $userinfo ($memberattrvalue)");
+
+      $Ld->unbind();
+      $Ld = undef;
+      # Connect to the server
+      unless ($Ld = new Net::LDAP($authzldapserver,port => $authzldapport)) {
+	$r->note_basic_auth_failure;
+	$r->log_reason("user $username: Authz LDAP Connection Failed",$r->uri);
+	return SERVER_ERROR;
+      }
       
+      # Bind anonymously
+      $msg = $Ld->bind;
+      unless ($msg->code == LDAP_SUCCESS) {
+	$r->note_basic_auth_failure;
+	$r->log_reason("user $username: Authz LDAP Initial Bind Failed: " . 
+		       $msg->code . " " . $msg->error, $r->uri);
+	return SERVER_ERROR;
+      }
+
       # Compare the username
       my ($result, $group) = check_group($r, $Ld, $basedn, $groupattrtype,
 					 $memberattrtype, $userinfo, $rest, 
@@ -476,20 +507,20 @@ Apache::AuthzLDAP - mod_perl LDAP Authorization Module
 
  # Any of the following variables can be set.
  # Defaults are listed to the right.
- PerlSetVar AuthenBaseDN    o=Foo,c=Bar        # Default: Empty String ("")
- PerlSetVar AuthzBaseDN     o=Tivoli Systems   # Default: none
- PerlSetVar GroupAttrType   gid                # Default: cn
- PerlSetVar LDAPServer      ldap.foo.com       # Default: localhost
- PerlSetVar LDAPPort        389                # Default: 389
- PerlSetVar MemberAttrType  uid                # Default: member
- PerlSetVar MemberAttrValue dn                 # Default: cn
- PerlSetVar NestedGroups    On                 # Default: off
- PerlSetVar UidattrType     userid             # Default: uid
+ PerlSetVar AuthenBaseDN         o=Foo,c=Bar       # Default: Empty String ("")
+ PerlSetVar AuthzBaseDN          o=Tivoli Systems  # Default: none
+ PerlSetVar AuthzGroupAttrType   gid               # Default: cn
+ PerlSetVar AuthzLDAPServer      ldap.foo.com      # Default: localhost
+ PerlSetVar AuthzLDAPPort        389               # Default: 389
+ PerlSetVar AuthzMemberAttrType  uid               # Default: member
+ PerlSetVar AuthzMemberAttrValue dn                # Default: cn
+ PerlSetVar AuthzNestedGroups    On                # Default: off
+ PerlSetVar AuthzUidattrType     userid            # Default: uid
 
  PerlAuthzHandler Apache::AuthzLDAP
 
- require group "My Group" GroupA "Group B"     # Authorize user against
-                                               # multiple groups
+ require group "My Group" GroupA "Group B"         # Authorize user against
+                                                   # multiple groups
  </Directory>
 
 =head1 DESCRIPTION
@@ -525,48 +556,66 @@ of authorization. By default, the AuthzBaseDN is blank.
 
 =over 4
 
-=item B<GroupAttrType>
+=item B<AuthzGroupAttrType>
 
 The attribute type name that contains the group's
-identification. By default, GroupAttrType is set to cn.
+identification. By default, AuthzGroupAttrType is set to cn.
 
 =back
 
 =over 4
 
-=item B<MemberAttrType>
+=item B<AuthzLDAPServer>
+
+The hostname for the LDAP server to query. By default,
+AuthzLDAPServer is set to localhost.
+
+=back
+
+=over 4
+
+=item B<AuthzLDAPPort>
+
+The port on which the LDAP server is listening. By default,
+AuthzLDAPPort is set to 389.
+
+=back
+
+=over 4
+
+=item B<AuthzMemberAttrType>
 
 The attribute type name that contains the group member's
-identification. By default, MemberAttrType is set to member.
+identification. By default, AuthzMemberAttrType is set to member.
 
 =back
 
 =over 4
 
-=item B<MemberAttrValue>
+=item B<AuthzMemberAttrValue>
 
-The attribute value contained within the MemberAttrType above. By
-default, MemberAttrValue is set to cn.
+The attribute value contained within the AuthzMemberAttrType
+above. By default, AuthzMemberAttrValue is set to cn.
 
 =back
 
 =over 4
 
-=item B<NestedGroups>
+=item B<AuthzNestedGroups>
 
-When the NestedGroups value is on, a recursive group search
+When the AuthzNestedGroups value is on, a recursive group search
 occurs until the user is found in a group or the deepest group's
-member list does not contain any groups. By default, NestedGroups
-is set to off.
+member list does not contain any groups. By default,
+AuthzNestedGroups is set to off.
 
 =back
 
 =over 4
 
-=item B<UidAttrType>
+=item B<AuthzUidAttrType>
 
 The attribute type name that contains the user's
-identification. By default, UidAttrType is set to uid.
+identification. By default, AuthzUidAttrType is set to uid.
 
 =back
 
@@ -598,6 +647,18 @@ modify it under the terms of the IBM Public License.
 ###############################################################################
 ###############################################################################
 # $Log: AuthzLDAP.pm,v $
+# Revision 1.15  2001/05/27 20:47:41  cgilmore
+# Added handling for AuthenLDAPServer to query user information
+#
+# Revision 1.14  2001/05/27 20:27:15  cgilmore
+# removed redeclaration of $msg in same scope
+#
+# Revision 1.13  2001/05/27 20:22:51  cgilmore
+# updated docs to reflect new variable names
+#
+# Revision 1.12  2001/05/27 20:01:12  cgilmore
+# see ChangeLog
+#
 # Revision 1.11  2001/01/08 17:23:47  cgilmore
 # fixed nested group bug and better handled pre-1.26 conditions
 #
