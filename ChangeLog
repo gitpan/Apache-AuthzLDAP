@@ -1,3 +1,20 @@
+2003-06-18	Christian Gilmore <cag@us.ibm.com>
+	
+	o  Added placement of REMOTE_GROUP into request headers to assist
+	   downstream handlers.
+	o  Updated documentation to describe REMOTE_GROUP insertion into
+	   both the request headers and an environment variable.	
+	o  Made release 1.00.
+	
+2003-02-03      Christian Gilmore <cag@us.ibm.com>
+
+	o  Added functionality for authorization levels inAGroup,
+	   inManyGroups, and inAllGroups.
+	o  Removed deprecated variable names.
+	o  Now use Text::ParseWords from standard perl distribution
+	   instead of CPAN-provided String::ParseWords.
+	o  Made release 0.70.
+	
 2001-07-12      Christian Gilmore <cgilmore@tivoli.com>
 
         o  Removed test for mod_perl-1.26 or higher.
@@ -33,4 +50,4 @@
 
 	o  Made first public release 0.50.
 
-$Id: ChangeLog,v 1.5 2001/07/12 14:18:52 cgilmore Exp $
+$Id: ChangeLog,v 1.7 2003/06/18 16:28:24 cgilmore Exp $
