@@ -1,4 +1,4 @@
-# $Id: AuthzLDAP.pm,v 1.15 2001/05/27 20:47:41 cgilmore Exp $
+# $Id: AuthzLDAP.pm,v 1.16 2001/07/12 14:18:52 cgilmore Exp $
 #
 # Author          : Jason Bodnar, Christian Gilmore
 # Created On      : Apr 04 12:04:00 CDT 2000
@@ -271,7 +271,7 @@ use String::ParseWords;
 
 
 # Global variables
-$Apache::AuthzLDAP::VERSION = '0.60';
+$Apache::AuthzLDAP::VERSION = '0.61';
 
 
 ###############################################################################
@@ -357,7 +357,9 @@ sub handler {
   
   my $username = $r->connection->user;
 
-  if ($mod_perl::VERSION < 1.26) {
+  # The required patch was not introduced in 1.26. It is no longer
+  # promised to be included in any timeframe. Commenting out.
+  # if ($mod_perl::VERSION < 1.26) {
     # I shouldn't need to use the below lines as this module
     # should never be called if there was a cache hit.  Since
     # set_handlers() doesn't work properly until 1.26 (according
@@ -367,13 +369,13 @@ sub handler {
     # security implications in a general environment where you
     # might be using someone else's handlers upstream or
     # downstream...
-    my $group_sent = $r->subprocess_env("REMOTE_GROUP");
-    my $cache_result = $r->notes('AuthzCache');
-    if ($group_sent && $cache_result eq 'hit') {
-      $r->log->debug("handler: upstream cache hit for ",
-		     "user=$username, group=$group_sent");
-      return OK;
-    }
+  my $group_sent = $r->subprocess_env("REMOTE_GROUP");
+  my $cache_result = $r->notes('AuthzCache');
+  if ($group_sent && $cache_result eq 'hit') {
+    $r->log->debug("handler: upstream cache hit for ",
+		   "user=$username, group=$group_sent");
+    return OK;
+  # }
   }
 
   # Clear for paranoid security precautions
@@ -623,7 +625,7 @@ identification. By default, AuthzUidAttrType is set to uid.
 
 This module has hooks built into it to handle Apache::AuthzCache
 version 0.02 and higher passing notes to avoid bugs in the
-set_handlers() method in mod_perl versions prior to 1.26.
+set_handlers() method in mod_perl versions 1.2x.
 
 =head1 AUTHORS
 
@@ -647,6 +649,9 @@ modify it under the terms of the IBM Public License.
 ###############################################################################
 ###############################################################################
 # $Log: AuthzLDAP.pm,v $
+# Revision 1.16  2001/07/12 14:18:52  cgilmore
+# see ChangeLog
+#
 # Revision 1.15  2001/05/27 20:47:41  cgilmore
 # Added handling for AuthenLDAPServer to query user information
 #

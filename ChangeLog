@@ -1,3 +1,9 @@
+2001-07-12      Christian Gilmore <cgilmore@tivoli.com>
+
+        o  Removed test for mod_perl-1.26 or higher.
+        o  Cleaned up documentation.
+        o  Made release 0.61.
+
 2001-05-27	Christian Gilmore <cgilmore@tivoli.com>
 
         o  Deprecated generic variable naming in favor of
@@ -15,16 +21,16 @@
  	   on the next major release. This change allows for user
 	   information to be hosted on one LDAP while group information is
 	   hosted on another.
-	o  Made release 0.60
+	o  Made release 0.60.
 	
 2001-01-08	Christian Gilmore <cgilmore@tivoli.com>
 
-	o  Fixed bug regarding nested groups whose membership was by dn
-	o  Better handled of pre-1.26 set_handlers bugs
-	o  Made release 0.51
+	o  Fixed bug regarding nested groups whose membership was by dn.
+	o  Better handled of pre-1.26 set_handlers bugs.
+	o  Made release 0.51.
 	
 2000-09-26	Christian Gilmore <cgilmore@tivoli.com>
 
-	o  Made first public release 0.50
+	o  Made first public release 0.50.
 
-$Id: ChangeLog,v 1.4 2001/05/27 20:50:07 cgilmore Exp $
+$Id: ChangeLog,v 1.5 2001/07/12 14:18:52 cgilmore Exp $
