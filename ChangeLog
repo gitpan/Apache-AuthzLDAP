@@ -1,5 +1,10 @@
+2001-01-08	Christian Gilmore <cgilmore@tivoli.com>
+
+	o  Fixed bug regarding nested groups whose membership was by dn
+	o  Better handled of pre-1.26 set_handlers bugs
+	
 2000-09-26	Christian Gilmore <cgilmore@tivoli.com>
 
 	o  Made first public release 0.50
 
-$Id: ChangeLog,v 1.1 2000/09/26 18:51:51 cgilmore Exp $
+$Id: ChangeLog,v 1.2 2001/01/08 17:24:25 cgilmore Exp $

@@ -1,4 +1,4 @@
-# $Id: AuthzLDAP.pm,v 1.10 2000/09/26 18:51:21 cgilmore Exp $
+# $Id: AuthzLDAP.pm,v 1.11 2001/01/08 17:23:47 cgilmore Exp $
 #
 # Author          : Jason Bodnar, Christian Gilmore
 # Created On      : Apr 04 12:04:00 CDT 2000
@@ -263,6 +263,7 @@ package Apache::AuthzLDAP;
 
 # Required libraries
 use strict;
+use mod_perl ();
 use Apache::Constants ':common';
 use Apache::Log ();
 use Net::LDAP qw(:all);
@@ -270,7 +271,7 @@ use String::ParseWords;
 
 
 # Global variables
-$Apache::AuthzLDAP::VERSION = '0.50';
+$Apache::AuthzLDAP::VERSION = '0.51';
 
 
 ###############################################################################
@@ -319,12 +320,20 @@ sub check_group {
     
     # If we did not find the person in the group let's check the groups members
     foreach $member ($entry->get($memberattrtype)) {
-      if ($member =~ /ou=group/ || !($member =~ /ou=/)) {
-	my ($result, $group) = check_group($r, $ld, $basedn, 
-					   $groupattrtype, $memberattrtype, 
-					   $userinfo, 
-					   "\"$member\"", $nested_groups);
-	return (OK, $group) if $result == OK;
+      if ($member =~ /ou=group/) {
+        # We just want the group's name
+        $member =~ s/^[^=]+=([^,]+).*/$1/;
+        my ($result, $group) = check_group($r, $ld, $basedn, 
+                                           $groupattrtype, $memberattrtype, 
+                                           $userinfo, 
+                                           "\"$member\"", $nested_groups);
+        return (OK, $group) if $result == OK;
+      } elsif (!($member =~ /ou=/)) {
+        my ($result, $group) = check_group($r, $ld, $basedn, 
+                                           $groupattrtype, $memberattrtype, 
+                                           $userinfo, 
+                                           "\"$member\"", $nested_groups);
+        return (OK, $group) if $result == OK;
       }
     }
   }
@@ -347,17 +356,24 @@ sub handler {
   return OK unless $requires;
   
   my $username = $r->connection->user;
-  my $group_sent = $r->subprocess_env("REMOTE_GROUP");
 
-  # The below test is dubious. I'm putting it in as a hack around the 
-  # problems with set_handlers not working quite right and lookup_uri() 
-  # not refilling the stack for subrequests
-  # As of mod_perl-1.26, this code should never, ever get called.
-  my $cache_result = $r->notes('AuthzCache');
-  if ($group_sent && $cache_result eq 'hit') {
-    $r->log->debug("handler: upstream cache hit for ",
-		   "user=$username, group=$group_sent");
-    return OK;
+  if ($mod_perl::VERSION < 1.26) {
+    # I shouldn't need to use the below lines as this module
+    # should never be called if there was a cache hit.  Since
+    # set_handlers() doesn't work properly until 1.26 (according
+    # to Doug MacEachern) I have to work around it by cobbling
+    # together cheat sheets for the previous and subsequent
+    # handlers in this phase. I get the willies about the
+    # security implications in a general environment where you
+    # might be using someone else's handlers upstream or
+    # downstream...
+    my $group_sent = $r->subprocess_env("REMOTE_GROUP");
+    my $cache_result = $r->notes('AuthzCache');
+    if ($group_sent && $cache_result eq 'hit') {
+      $r->log->debug("handler: upstream cache hit for ",
+		     "user=$username, group=$group_sent");
+      return OK;
+    }
   }
 
   # Clear for paranoid security precautions
@@ -571,7 +587,7 @@ httpd(8), ldap(3), mod_perl(1), slapd(8C)
 
 =head1 COPYRIGHT
 
-Copyright (C) 2000, International Business Machines Corporation
+Copyright (C) 2001, International Business Machines Corporation
 and others. All Rights Reserved.
 
 This module is free software; you can redistribute it and/or
@@ -582,6 +598,9 @@ modify it under the terms of the IBM Public License.
 ###############################################################################
 ###############################################################################
 # $Log: AuthzLDAP.pm,v $
+# Revision 1.11  2001/01/08 17:23:47  cgilmore
+# fixed nested group bug and better handled pre-1.26 conditions
+#
 # Revision 1.10  2000/09/26 18:51:21  cgilmore
 # updated to Apache from Tivoli namespace and updated pod.
 #
