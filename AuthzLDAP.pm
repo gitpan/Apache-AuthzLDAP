@@ -1,4 +1,4 @@
-# $Id: AuthzLDAP.pm,v 1.23 2003/06/18 16:28:24 cgilmore Exp $
+# $Id: AuthzLDAP.pm,v 1.24 2004/12/01 21:44:38 cgilmore Exp $
 #
 # Author          : Jason Bodnar, Christian Gilmore
 # Created On      : Apr 04 12:04:00 CDT 2000
@@ -277,7 +277,7 @@ use constant REQUIRE_OPTS => { 'inagroup'     => 1,
 
 
 # Global variables
-$Apache::AuthzLDAP::VERSION = '1.00';
+$Apache::AuthzLDAP::VERSION = '1.10';
 
 
 ###############################################################################
@@ -351,7 +351,16 @@ sub check_group {
     foreach $member ($entry->get($nestedattrtype)) {
       $r->log->debug("check_group: Checking $member");
       # We just want the group's name
-      $member =~ s/^[^=]+=\"?([^\",]+).*/$1/;
+      if ($member =~ /^[^=]+="([^"]+)",/) {
+	$member = $1;
+	$r->log->debug("check_group: Setting quoted $member");
+      } elsif ($member =~ /^[^=]+=([^.]+),/) {
+	$member = $1;
+	$r->log->debug("check_group: Examining escaped $member");
+	$member =~ s/\\(.)/$1/g;
+	$r->log->debug("check_group: Setting escaped $member");
+      }
+
       $r->log->debug("check_group: Member now $member");
       my ($result, $child_group) = check_group($r, $ld, $basedn, $groupattrtype,
 					       $memberattrtype, $userinfo,
@@ -717,7 +726,7 @@ httpd(8), ldap(3), mod_perl(1), slapd(8C)
 
 =head1 COPYRIGHT
 
-Copyright (C) 2003, International Business Machines Corporation
+Copyright (C) 2004, International Business Machines Corporation
 and others. All Rights Reserved.
 
 This module is free software; you can redistribute it and/or
@@ -728,6 +737,9 @@ modify it under the terms of the IBM Public License.
 ###############################################################################
 ###############################################################################
 # $Log: AuthzLDAP.pm,v $
+# Revision 1.24  2004/12/01 21:44:38  cgilmore
+# Now handle LDAP v2 and v3 character escaping methods within distinguished names to better support nested group searches.
+#
 # Revision 1.23  2003/06/18 16:28:24  cgilmore
 # see ChangeLog
 #

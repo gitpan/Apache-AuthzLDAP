@@ -1,3 +1,9 @@
+2004-12-01	Christian Gilmore <cag@us.ibm.com>
+	
+	o  Now handle LDAP v2 and v3 character escaping methods within
+	   distinguished names to better support nested group searches.
+	o  Made release 1.10.
+	
 2003-06-18	Christian Gilmore <cag@us.ibm.com>
 	
 	o  Added placement of REMOTE_GROUP into request headers to assist
@@ -50,4 +56,4 @@
 
 	o  Made first public release 0.50.
 
-$Id: ChangeLog,v 1.7 2003/06/18 16:28:24 cgilmore Exp $
+$Id: ChangeLog,v 1.8 2004/12/01 21:44:38 cgilmore Exp $
