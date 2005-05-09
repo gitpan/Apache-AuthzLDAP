@@ -1,4 +1,4 @@
-# $Id: AuthzLDAP.pm,v 1.24 2004/12/01 21:44:38 cgilmore Exp $
+# $Id: AuthzLDAP.pm,v 1.26 2005/05/09 16:36:06 cgilmore Exp $
 #
 # Author          : Jason Bodnar, Christian Gilmore
 # Created On      : Apr 04 12:04:00 CDT 2000
@@ -277,7 +277,7 @@ use constant REQUIRE_OPTS => { 'inagroup'     => 1,
 
 
 # Global variables
-$Apache::AuthzLDAP::VERSION = '1.10';
+$Apache::AuthzLDAP::VERSION = '1.11';
 
 
 ###############################################################################
@@ -354,7 +354,7 @@ sub check_group {
       if ($member =~ /^[^=]+="([^"]+)",/) {
 	$member = $1;
 	$r->log->debug("check_group: Setting quoted $member");
-      } elsif ($member =~ /^[^=]+=([^.]+),/) {
+      } elsif ($member =~ /^[^=]+=([^,]+),/) {
 	$member = $1;
 	$r->log->debug("check_group: Examining escaped $member");
 	$member =~ s/\\(.)/$1/g;
@@ -737,6 +737,12 @@ modify it under the terms of the IBM Public License.
 ###############################################################################
 ###############################################################################
 # $Log: AuthzLDAP.pm,v $
+# Revision 1.26  2005/05/09 16:36:06  cgilmore
+# Updated to version 1.11 based upon Andrew's fix in December.
+#
+# Revision 1.25  2004/12/06 17:18:40  anyoung
+# There was a period where there should have been a comma.
+#
 # Revision 1.24  2004/12/01 21:44:38  cgilmore
 # Now handle LDAP v2 and v3 character escaping methods within distinguished names to better support nested group searches.
 #

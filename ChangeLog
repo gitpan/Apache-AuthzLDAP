@@ -1,3 +1,9 @@
+2005-05-09	Christian Gilmore <cag@us.ibm.com>
+
+	o  Fixed bug that errantly placed a period where there should have
+	   been a comma. Bug reported and fix provided by Andrew Young.
+	o  Made release 1.11.
+	
 2004-12-01	Christian Gilmore <cag@us.ibm.com>
 	
 	o  Now handle LDAP v2 and v3 character escaping methods within
@@ -56,4 +62,4 @@
 
 	o  Made first public release 0.50.
 
-$Id: ChangeLog,v 1.8 2004/12/01 21:44:38 cgilmore Exp $
+$Id: ChangeLog,v 1.9 2005/05/09 16:36:06 cgilmore Exp $
